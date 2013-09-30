@@ -28,11 +28,20 @@ PRODUCT_DATABASE = {
     "charset"   : "utf8"
 }
 
-class MaterialGenerator(CommonHandler):
+SEM_DATABASE = {
+    "host"  : "192.168.0.233",
+    "user"  : "sem",
+    "passwd": "sem@Kooxoo1126",
+    "database"  : "test",
+    "port"      : 3306,
+    "charset"   : "utf8"
+}
+
+class HotelInfoAdd(CommonHandler):
     RE = re.compile('_(\d{8})')
 
     TRIM_STR = (u'—', u'、', u'-', u'·', u'。', u'+', u'@', u'(', u')', u'（', u'）', u'（副楼）',
-                u'（预付）', u'【', u'】', u'《', u'》', u'<', u'>' )
+                u'（预付）', u'【', u'】', u'《', u'》', u'<', u'>', u'★' )
 
     REPLACE_DICT = {
         u'°' : u'度',
@@ -42,6 +51,11 @@ class MaterialGenerator(CommonHandler):
         self.product_conn           = MySQLOperator()
         if not self.product_conn.Connect(**PRODUCT_DATABASE):
             logging.error("can not connect [%s]" % str(PRODUCT_DATABASE))
+            sys.exit()
+
+        self.sem_conn           = MySQLOperator()
+        if not self.sem_conn.Connect(**SEM_DATABASE):
+            logging.error("can not connect [%s]" % str(SEM_DATABASE))
             sys.exit()
 
         parser = OptionParser()
@@ -70,8 +84,17 @@ class MaterialGenerator(CommonHandler):
 
         return hotelname
 
-    def GenerateMaterial(self, hotelid_list):
+    def _CityName(self, row):
+        if row['formated_name'].find(row['city']) >= 0:
+            return ''
+        else:
+            return row['city'] + row['formated_name']
+
+    def GenerateHotelInfoAdd(self, hotelid_list):
         result_hotel_list = []
+
+        sql = "delete from test.hotel_info_add"
+        self.sem_conn.Execute(sql)
 
         new_hotelid_list = [int(i) for i in hotelid_list]
         for hotelid in new_hotelid_list:
@@ -83,12 +106,10 @@ class MaterialGenerator(CommonHandler):
                 logging.warn("skip hotelid: %d" % hotelid)
                 continue
 
-            row = result_set[0]
-            row['name'] = self._FormatHotelName(row['name'])
-            tmp_str = "%(hotelid)d,%(name)s,%(city)s,%(grade)d,%(comment_count)d,%(pinpai_name)s,%(ext_landingpage)s" % row
-            result_hotel_list.append(self.ToString(tmp_str))
-
-        self.SaveList('new_%s' % sys.argv[1], result_hotel_list)
+            row                     = result_set[0]
+            row['formated_name']    = self._FormatHotelName(row['name'])
+            row['city_name']        = self._CityName(row)
+            self.sem_conn.ExecuteInsertDict('test.hotel_info_add', row)
 
     def Run(self, filename):
         file_list = self.LoadList(filename)
@@ -97,7 +118,7 @@ class MaterialGenerator(CommonHandler):
             if len(i) > 0:
                 new_list.append(i)
 
-        self.GenerateMaterial(new_list)
+        self.GenerateHotelInfoAdd(new_list)
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -105,5 +126,5 @@ if __name__ == '__main__':
         sys.exit()
 
     btlog_init('log/material.log', logfile=False, console=True)
-    k = MaterialGenerator()
+    k = HotelInfoAdd()
     k.Run(sys.argv[1])

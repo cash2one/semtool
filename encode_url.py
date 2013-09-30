@@ -4,6 +4,7 @@ import sys
 import re
 import urllib
 import logging
+import chardet
 
 import autopath
 
@@ -32,9 +33,32 @@ class EncodeChinese(CommonHandler):
         line_list = self.LoadList(source_file)
         logging.info("source len: %d" % len(line_list))
 
+        detect_result = {}
+        formated_list = []
+        for line in line_list:
+            line = line.strip("\r").strip("\n")
+            if len(line) <= 1:
+                continue
+            ret = chardet.detect(line)
+            if ret['confidence'] <= 0.90:
+                print '[' , line, ']'
+                print ret
+                raise Exception, 'invalid charset'
+            detect_result.setdefault(ret['encoding'], 0)
+            detect_result[ret['encoding']] += 1
+            formated_list.append(line)
+
+        print detect_result.keys()
+        for k in detect_result.keys():
+            if not k.lower() in ('utf8', 'gbk', 'gb2312', 'ascii'):
+                raise Exception, 'invalid charset'
+
+        if len(detect_result) > 2:
+            raise Exception, 'too many chaset'
+
         dest_list = []
         first_line_flag = True
-        for line in line_list:
+        for line in formated_list:
             if first_line_flag: # skip header
                 first_line_flag = False
                 continue
@@ -55,6 +79,7 @@ class EncodeChinese(CommonHandler):
         todo_str = re.match(r'.*-(.*)-jiudian', items[1]).group(1)
         if self.is_mutichaset(todo_str):
             encoded_str = urllib.quote(todo_str)
+            logging.info("%s => %s" % (todo_str, encoded_str))
             new_url = items[1].replace(todo_str, encoded_str)
             s = "%s\t%s" % (items[0], new_url)
         else:
@@ -86,12 +111,9 @@ def test():
     
 
 if __name__ == '__main__':
-    test()
-    sys.exit()
-
     if len(sys.argv) != 2:
         print 'useage: %s filename' % sys.argv[0]
         sys.exit()
 
-    e = EncodeChinese()
+    e = CsvProcessor()
     e.run(sys.argv[1])
