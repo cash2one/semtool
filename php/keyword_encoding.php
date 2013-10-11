@@ -3,23 +3,25 @@
 define('BASE_PATH', dirname(__FILE__));
 $logname = BASE_PATH . '/log/encoding.' . date("Y-m-d") . '.log';
 
-function locallog($s) {
+function locallog($s, $flag) {
     global $logname;
-    $ns = date('H-i-s: ') . $s . "\n";
+    $ns = date('H-i-s:') . " [$flag] " . $s . "\n";
     file_put_contents($logname, $ns, FILE_APPEND);
 }
-
-
-$_GET['word'] = '中国';
 
 if (!isset($_GET['word'])) {
     echo "usage: path?word=xx";
     exit();
 }
-
 $word = $_GET['word'];
+
+$flag = '';
+if (isset($_GET['flag'])) {
+    $flag = $_GET['flag'];
+}
+
 $encoding = mb_detect_encoding($word, "UTF-8,GBK,GB2312,CP936,ASCII" );
-locallog("$word encoding: $encoding");
+locallog("$word encoding: $encoding", $flag);
 
 if ($encoding != "UTF-8")
 {
@@ -27,5 +29,5 @@ if ($encoding != "UTF-8")
 }
 
 $word_encoded = urlencode($word);
-locallog("$word encoding: $encoding, encoded: $word_encoded");
+locallog("$word encoding: $encoding, encoded: $word_encoded", $flag);
 echo $word_encoded;
