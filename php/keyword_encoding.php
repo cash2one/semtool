@@ -5,7 +5,7 @@ $logname = BASE_PATH . '/log/encoding.' . date("Y-m-d") . '.log';
 
 function locallog($s, $flag) {
     global $logname;
-    $ns = date('H-i-s:') . " [$flag] " . $s . "\n";
+    $ns = date('Y-m-d H:i:s') . " [$flag] " . $s . "\n";
     file_put_contents($logname, $ns, FILE_APPEND);
 }
 
