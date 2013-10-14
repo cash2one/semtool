@@ -1,6 +1,22 @@
 #!/usr/bin/python
 # coding: utf-8
 
+'''
+drop table if exists tmp_hotel_info_add;
+CREATE TABLE `tmp_hotel_info_add` (
+    `hotelid` int(11) NOT NULL default '0',
+    `name` varchar(256) default NULL,
+    `formated_name` varchar(256) default NULL,
+    `city_name` varchar(256) default NULL,
+    `city` varchar(64) default NULL,
+    `grade` int(11) default NULL,
+    `comment_count` int(11) default NULL,
+    `pinpai_name` varchar(64) default NULL,
+    `ext_landingpage` varchar(256) default NULL,
+    PRIMARY KEY  (`hotelid`)
+    ) ENGINE=MyISAM DEFAULT CHARSET=utf8
+'''
+
 import os
 import sys
 import time
@@ -14,28 +30,11 @@ from datetime import datetime, timedelta
 from optparse import OptionParser
 
 import autopath
+from db_config import *
 
 from utils.common_handler import CommonHandler
 from utils.btlog import btlog_init
 from db.mysqlv6 import MySQLOperator
-
-PRODUCT_DATABASE = {
-    "host"  : "192.168.0.57",
-    "user"  : "product_w",
-    "passwd": "kooxootest",
-    "database"  : "product",
-    "port"      : 3306,
-    "charset"   : "utf8"
-}
-
-SEM_DATABASE = {
-    "host"  : "192.168.0.233",
-    "user"  : "sem",
-    "passwd": "sem@Kooxoo1126",
-    "database"  : "test",
-    "port"      : 3306,
-    "charset"   : "utf8"
-}
 
 class HotelInfoAdd(CommonHandler):
     RE = re.compile('_(\d{8})')
@@ -46,6 +45,8 @@ class HotelInfoAdd(CommonHandler):
     REPLACE_DICT = {
         u'°' : u'度',
     }
+
+    KEYWORD_SERVLET = 'sem_keyword_servlet'
 
     def __init__(self):
         self.product_conn           = MySQLOperator()
@@ -93,7 +94,7 @@ class HotelInfoAdd(CommonHandler):
     def GenerateHotelInfoAdd(self, hotelid_list):
         result_hotel_list = []
 
-        sql = "delete from test.hotel_info_add"
+        sql = "delete from test.tmp_hotel_info_add"
         self.sem_conn.Execute(sql)
 
         new_hotelid_list = [int(i) for i in hotelid_list]
@@ -109,9 +110,30 @@ class HotelInfoAdd(CommonHandler):
             row                     = result_set[0]
             row['formated_name']    = self._FormatHotelName(row['name'])
             row['city_name']        = self._CityName(row)
-            self.sem_conn.ExecuteInsertDict('test.hotel_info_add', row)
+            self.sem_conn.ExecuteInsertDict('test.tmp_hotel_info_add', row)
 
-    def Run(self, filename):
+    def NewHotel(self, filename):
+        sql = "select distinct hotelid from %s order by hotelid asc" % self.KEYWORD_SERVLET
+        mapping_result_set = self.sem_conn.Query(sql)
+        logging.info("mapping hotelid count: %d" % len(mapping_result_set))
+
+        sql = ("select distinct i.hotelid from tmp_hotel_info i, tmp_hotel_price p "
+                " where p.hotelid = i.hotelid order by hotelid asc")
+        hotel_result_set = self.product_conn.Query(sql)
+        logging.info("there are total hotel in product db: %d" % len(hotel_result_set))
+
+        (only_exists_in_mapping, both_exists, only_exists_in_product) = self.DiffList(mapping_result_set, hotel_result_set)
+        logging.info("only exists in mapping: %d" % len(only_exists_in_mapping))
+        logging.info("both exists: %d" % len(both_exists))
+        logging.info("only exists in product: %d" % len(only_exists_in_product))
+
+        tmp_list = [str(i[0]) for i in only_exists_in_product]
+        self.SaveList(filename, tmp_list)
+
+
+    def Run(self, filename="new_product_hotelid.txt"):
+        self.NewHotel(filename)
+
         file_list = self.LoadList(filename)
         new_list = []
         for i in file_list:
@@ -120,11 +142,8 @@ class HotelInfoAdd(CommonHandler):
 
         self.GenerateHotelInfoAdd(new_list)
 
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print '%s filename' % sys.argv[0]
-        sys.exit()
 
-    btlog_init('log/material.log', logfile=False, console=True)
+if __name__ == '__main__':
+    btlog_init('log/log_hotel_info_add.log', logfile=False, console=True)
     k = HotelInfoAdd()
-    k.Run(sys.argv[1])
+    k.Run()
