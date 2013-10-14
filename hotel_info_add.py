@@ -6,8 +6,8 @@ drop table if exists tmp_hotel_info_add;
 CREATE TABLE `tmp_hotel_info_add` (
     `hotelid` int(11) NOT NULL default '0',
     `name` varchar(256) default NULL,
-    `formated_name` varchar(256) default NULL,
-    `city_name` varchar(256) default NULL,
+    `formated_hotelname` varchar(256) default NULL,
+    `city_hotelname` varchar(256) default NULL,
     `city` varchar(64) default NULL,
     `grade` int(11) default NULL,
     `comment_count` int(11) default NULL,
@@ -86,10 +86,10 @@ class HotelInfoAdd(CommonHandler):
         return hotelname
 
     def _CityName(self, row):
-        if row['formated_name'].find(row['city']) >= 0:
+        if row['formated_hotelname'].find(row['city']) >= 0:
             return ''
         else:
-            return row['city'] + row['formated_name']
+            return row['city'] + row['formated_hotelname']
 
     def GenerateHotelInfoAdd(self, hotelid_list):
         result_hotel_list = []
@@ -108,8 +108,8 @@ class HotelInfoAdd(CommonHandler):
                 continue
 
             row                     = result_set[0]
-            row['formated_name']    = self._FormatHotelName(row['name'])
-            row['city_name']        = self._CityName(row)
+            row['formated_hotelname']    = self._FormatHotelName(row['name'])
+            row['city_hotelname']        = self._CityName(row)
             self.sem_conn.ExecuteInsertDict('test.tmp_hotel_info_add', row)
 
     def NewHotel(self, filename):
