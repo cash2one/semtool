@@ -39,11 +39,19 @@ from db.mysqlv6 import MySQLOperator
 class HotelInfoAdd(CommonHandler):
     RE = re.compile('_(\d{8})')
 
-    TRIM_STR = (u'—', u'、', u'-', u'·', u'。', u'+', u'@', u'(', u')', u'（', u'）', u'（副楼）',
-                u'（预付）', u'【', u'】', u'《', u'》', u'<', u'>', u'★' )
+    TRIM_STR = (u'—', u'、', u'-', u'·', u'.', u'+', u'@', u'(', u')', u'(副楼)',
+                u'(预付)', u'<', u'>', u'★' )
 
     REPLACE_DICT = {
         u'°' : u'度',
+        u'（' : u'(',
+        u'）' : u')',
+        u'《' : u'(',
+        u'》' : u')',
+        u'【' : u'(',
+        u'】' : u')',
+        u'，' : u',',
+        u'。' : u'.',
     }
 
     KEYWORD_SERVLET = 'sem_keyword_servlet'
@@ -68,10 +76,14 @@ class HotelInfoAdd(CommonHandler):
             hotelname = hotelname.decode('utf8', 'ignore')
         logging.info("hotelname: %s, %d" % (hotelname, len(hotelname)))
 
+        # level1
+        for k,v in self.REPLACE_DICT.iteritems():
+            hotelname = hotelname.replace(k,v)
+
         # special 1
-        pos = hotelname.find(u'（原')
+        pos = hotelname.find(u'(原')
         if pos >= 0:
-            new_pos = hotelname.find(u'）', pos)
+            new_pos = hotelname.find(u')', pos)
             if new_pos >= 0:
                 hotelname = hotelname[:pos] + hotelname[new_pos:]
             else:
@@ -79,9 +91,6 @@ class HotelInfoAdd(CommonHandler):
 
         for item in self.TRIM_STR:
             hotelname = hotelname.replace(item, '')
-
-        for k,v in self.REPLACE_DICT.iteritems():
-            hotelname = hotelname.replace(k,v)
 
         return hotelname
 
