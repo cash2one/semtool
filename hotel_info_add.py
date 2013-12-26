@@ -39,8 +39,8 @@ from db.mysqlv6 import MySQLOperator
 class HotelInfoAdd(CommonHandler):
     RE = re.compile('_(\d{8})')
 
-    TRIM_STR = (u'—', u'、', u'-', u'·', u'.', u'+', u'@', u'(', u')', u'(副楼)',
-                u'(预付)', u'<', u'>', u'★' )
+    TRIM_STR = (u'、', u'-', u'·', u'.', u'+', u'@', u'(', u')', u'(副楼)',
+                u'?', u'(预付)', u'<', u'>', u'★' , u'*', u'/', u'J&amp;I')
 
     REPLACE_DICT = {
         u'°' : u'度',
@@ -50,8 +50,13 @@ class HotelInfoAdd(CommonHandler):
         u'》' : u')',
         u'【' : u'(',
         u'】' : u')',
+        u'[' : u'(',
+        u']' : u')',
         u'，' : u',',
         u'。' : u'.',
+        u'＋' : u'+',
+        u'—' : u'-',
+        u'？' : u'?',
     }
 
     KEYWORD_SERVLET = 'sem_keyword_servlet'
